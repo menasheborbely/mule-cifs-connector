@@ -236,29 +236,31 @@ public class CIFSOperations {
 
 	/**
 	 * Private and Protected Methods are not exposed as operations
+	 * @throws Exception 
 	 */
 
-	protected InputStream readFileContents(SmbFile sFile) {
+	protected InputStream readFileContents(SmbFile sFile) throws Exception {
 
 		SmbFileInputStream inFile = null;
-
+		ByteArrayInputStream result = null;
+		
 		try {
 			inFile = new SmbFileInputStream(sFile);
 			byte[] sBytes = IOUtils.toByteArray(inFile);
 			inFile.close();
-			return new ByteArrayInputStream(sBytes);
+			result = new ByteArrayInputStream(sBytes);
 
 		} catch (Exception e) {
-
+			throw e;
+		} finally {
 			try {
 				if (inFile != null)
 					inFile.close();
 			} catch (IOException ignored) {
 			}
-			_logger.error("Could not read the file=> " + sFile.getPath(), e);
 		}
 
-		return null;
+		return result;
 
 	}
 
