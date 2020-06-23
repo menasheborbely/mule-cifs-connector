@@ -22,9 +22,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.mule.runtime.extension.api.annotation.param.MediaType;
+import org.mule.runtime.extension.api.exception.ModuleException;
+import org.mule.runtime.extension.api.annotation.error.Throws;
 import org.mule.runtime.extension.api.annotation.param.Config;
 import org.mule.runtime.extension.api.annotation.param.Connection;
 import org.mule.runtime.extension.api.annotation.param.Content;
+import org.cg.mule.cifs.errors.CIFSErrors;
+import org.cg.mule.cifs.errors.ExecuteErrorsProvider;
 
 /**
  * This class is a container for operations, every public method in this class
@@ -47,6 +51,7 @@ public class CIFSOperations {
 	 * @return true or false
 	 */
 	@MediaType(value = ANY, strict = false)
+	@Throws(ExecuteErrorsProvider.class)
 	public boolean saveFile(@Config CIFSConfiguration configuration, InputStream payload, String fileName) {
 		_logger.debug("Start->saveFile");
 		this.config = configuration;
@@ -55,15 +60,18 @@ public class CIFSOperations {
 		String path = getSambaConnectionString() + fileName;
 
 		SmbFileOutputStream out = null;
+		boolean result = false;
 		try {
 			SmbFile resource = new SmbFile(path, auth);
 			out = new SmbFileOutputStream(resource);
 			out.write(IOUtils.toByteArray(payload));
 			out.flush();
 			out.close();
-			return true;
+			result = true;
 		} catch (Exception e) {
 			_logger.error("Something went wrong while writing the file", e);
+			throw new ModuleException(CIFSErrors.FILE_WRITE_ERROR, e);
+		} finally {
 			try {
 				if (out != null)
 					out.close();
@@ -72,7 +80,7 @@ public class CIFSOperations {
 		}
 
 		_logger.debug("End->saveFile");
-		return false;
+		return result;
 	}
 
 	/**
@@ -84,6 +92,7 @@ public class CIFSOperations {
 	 * @return Map FilePath -> FileContentAsStream
 	 */
 	@MediaType(value = ANY, strict = false)
+	@Throws(ExecuteErrorsProvider.class)
 	public Map<String, InputStream> readFiles(@Config CIFSConfiguration configuration,
 			@Content(primary = true) String payload, String fileNamePattern) {
 		_logger.debug("Start->readFiles");
@@ -111,7 +120,7 @@ public class CIFSOperations {
 			}
 		} catch (Exception e) {
 			_logger.error("Something went wrong while accessing the resource", e);
-			files = null;
+			throw new ModuleException(CIFSErrors.FILES_MAP_AND_READ_ERROR, e);
 		}
 
 		_logger.debug("End->readFiles");
@@ -127,6 +136,7 @@ public class CIFSOperations {
 	 * @return List of files
 	 */
 	@MediaType(value = ANY, strict = false)
+	@Throws(ExecuteErrorsProvider.class)
 	public List<String> readFileNames(@Config CIFSConfiguration configuration, @Content(primary = true) String payload,
 			String fileNamePattern) {
 		_logger.debug("Start->readFileNames");
@@ -153,7 +163,7 @@ public class CIFSOperations {
 			}
 		} catch (Exception e) {
 			_logger.error("Something went wrong while accessing the resource", e);
-			files = null;
+			throw new ModuleException(CIFSErrors.FILES_LISTING_ERROR, e);
 		}
 
 		_logger.debug("End->readFileNames");
@@ -167,6 +177,7 @@ public class CIFSOperations {
 	 * @return returns file contents as byte array
 	 */
 	@MediaType(value = ANY, strict = false)
+	@Throws(ExecuteErrorsProvider.class)
 	public InputStream readFile(@Config CIFSConfiguration configuration, String fileName) {
 		_logger.debug("Start->readFile");
 
@@ -175,16 +186,20 @@ public class CIFSOperations {
 		NtlmPasswordAuthentication auth = this.getNtlmAuth();
 
 		String path = getSambaConnectionString() + fileName;
+		
+		InputStream result = null;
 		try {
+			
 			SmbFile resource = new SmbFile(path, auth);
-			return readFileContents(resource);
+			result = readFileContents(resource);
 
 		} catch (Exception e) {
 			_logger.error("Something went wrong while reading the file", e);
+			throw new ModuleException(CIFSErrors.FILE_READ_ERROR, e);
 		}
 
 		_logger.debug("End->readFile");
-		return null;
+		return result;
 	}
 
 	/**
@@ -194,6 +209,7 @@ public class CIFSOperations {
 	 * @return returns boolean to indicate successful deletion of a file
 	 */
 	@MediaType(value = ANY, strict = false)
+	@Throws(ExecuteErrorsProvider.class)
 	public boolean deleteFile(@Config CIFSConfiguration configuration, String fileName) {
 
 		_logger.debug("Start->deleteFile");
@@ -204,13 +220,14 @@ public class CIFSOperations {
 
 		String path = getSambaConnectionString() + fileName;
 
-		boolean status = true;
+		boolean status = false;
 		try {
 			SmbFile resource = new SmbFile(path, auth);
 			resource.delete();
+			status = true;			
 		} catch (Exception e) {
 			_logger.error("Something went wrong while deleting the resource", e);
-			status = false;
+			throw new ModuleException(CIFSErrors.FILE_DELETE_ERROR, e);
 		}
 
 		_logger.debug("End->deleteFile");

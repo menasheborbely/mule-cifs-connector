@@ -1,8 +1,10 @@
 package io.idstudios.mule.extension.internal;
 
 import org.mule.runtime.extension.api.annotation.Extension;
+import org.cg.mule.cifs.errors.CIFSErrors;
 import org.mule.runtime.extension.api.annotation.Configurations;
 import org.mule.runtime.extension.api.annotation.dsl.xml.Xml;
+import org.mule.runtime.extension.api.annotation.error.ErrorTypes;
 
 
 /**
@@ -12,6 +14,7 @@ import org.mule.runtime.extension.api.annotation.dsl.xml.Xml;
 @Xml(prefix = "cifs")
 @Extension(name = "CIFS")
 @Configurations(CIFSConfiguration.class)
+@ErrorTypes(CIFSErrors.class)
 public class CIFSExtension {
 
 }
